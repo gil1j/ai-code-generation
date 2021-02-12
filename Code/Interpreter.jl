@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.7
+# v0.12.20
 
 using Markdown
 using InteractiveUtils
@@ -8,8 +8,10 @@ using InteractiveUtils
 using Match
 
 # ╔═╡ 70446fba-69ed-11eb-1858-b5a60a6488cb
-function brainfuck(str, memsize = 5000)
+function brainfuck(prog, memsize = 5000, ticks_lim = 100000)
 
+	str = join(prog)
+	
     out = Array{Int64,1}()
     
     # Read program and filter symbols
@@ -23,9 +25,11 @@ function brainfuck(str, memsize = 5000)
     stack = Array{Int64,1}()
     ptr = 1                 # Memory pointer
     instr = 1               # Instruction pointer
+	
+	ticks = 0 # ticks counter for timeout (and fitness calculation in the future ???)
 
     # Run the program
-    while instr <= length(code)  
+    while instr <= length(code) && ticks <= ticks_lim
         if ptr > memsize
             ptr = ptr - memsize
         end
@@ -40,51 +44,87 @@ function brainfuck(str, memsize = 5000)
             '.' => push!(out,memory[ptr]) # NUMERICAL OUTPUT conv to ascii -> String(UInt8.([memory[ptr]]))
             ',' => (memory[ptr] = read(STDIN, Char)) # To be adapted
             '[' => (if memory[ptr] == 0
-                       instr = findnext(collect(code) .== ']', instr)
-                   else
-                       push!(stack, instr)
+						if findnext(collect(code) .== ']', instr) != nothing
+                    		instr = findnext(collect(code) .== ']', instr)
+						end
+                	else
+                   		push!(stack, instr)
                     end)
             ']' => (if memory[ptr] != 0
-                        instr = pop!(stack) - 1
+						if length(stack) != 0
+                        	instr = pop!(stack) - 1
+						end
                     else
-                        pop!(stack)
+						if length(stack) != 0
+                        	pop!(stack)
+						end
                     end)      
         end
         instr += 1
+		ticks += 1
     end
-    return out
+    return out,ticks
 end
 
 # ╔═╡ df708826-69fa-11eb-161b-553948a1ab53
-function brainfuck_to(str, time_out = 1,memsize = 5000)
-	@async((sleep(time_out);exit()))  
-	brainfuck(str, memsize = 5000)
-end
+
 
 # ╔═╡ ff6e8d00-69ec-11eb-203f-09807144f920
-Char.(brainfuck("++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."))
+begin
+	hw = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+	out,ticks = brainfuck(hw)
+	show(out)
+	show(join(Char.(out)))
+	println("program executed in $ticks ticks")
+	
+end
+
+# ╔═╡ 2f99ffdc-69ed-11eb-2060-735b07678435
+function filter_bad_candidate(prog)
+    
+    for i in 1:length(collect(prog))
+        if length(findall(collect(prog[1:i]) .== ']')) > length(findall(collect(prog[1:i]) .== '['))
+            return "bad"
+        end
+    end
+    
+	return "good"
+
+    #TBC
+    
+end
 
 # ╔═╡ 07d8fe0a-69ed-11eb-3da8-57cf8ae76fb6
 function generate_rand_prog(max_size)
-    symbols = ['>','<','+','-','.','[',']'] #['>','<','+','-','.',',','[',']']  not using STDIN at the moment
-    size = rand(1:max_size)
-    code = Array{Char,1}(undef,size)
-    for i in 1:size
-        code[i] = rand(symbols)
-    end
-    return join(code)
+	symbols = ['>','<','+','-','.','[',']'] #['>','<','+','-','.',',','[',']']  not using STDIN at the moment
+	
+	state = "bad"
+	
+	while state == "bad"
+		size = rand(1:max_size)
+		code = Array{Char,1}(undef,size)
+		for i in 1:size
+			code[i] = rand(symbols)
+		end
+		
+		state = filter_bad_candidate(join(code))
+		if state == "good"
+			return code # "return join(code)" for string instead of array
+		end
+	end
 end 
 
 # ╔═╡ 0e424b20-69ed-11eb-236b-d1dbb4829a75
-try
-    brainfuck_to(generate_rand_prog(50))
-catch
-    println("Program cannot compile")
+begin
+	out_rand,ticks_rand= brainfuck(generate_rand_prog(50))
+	show(join(Char.(out_rand)))
+	println("program executed in $ticks_rand ticks")
 end
 
 # ╔═╡ 18cd01fa-69ed-11eb-2b2b-39f63fb52165
-function fitness(prog_out,expect_out)
-    
+function fitness_hw(prog)
+    expect_out = [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33, 10]
+	prog_out,ticks_out = brainfuck(prog)
     if length(prog_out)<length(expect_out)
         pad_prog_out = append!(prog_out,zeros(Int64,length(expect_out)-length(prog_out)))
         pad_expect_out = expect_out
@@ -105,27 +145,6 @@ function fitness(prog_out,expect_out)
     
 end
 
-# ╔═╡ 1fd460d0-69ed-11eb-162b-f3f2b0d8919c
-fitness([5,6,2,8],[1,0,5])
-
-# ╔═╡ 2f99ffdc-69ed-11eb-2060-735b07678435
-function filter_bad_candidate(prog)
-    
-    for i in 1:length(collect(prog))
-        if length(findall(collect(prog[1:i]) .== ']')) > length(findall(collect(prog[1:i]) .== '['))
-            return "bad"
-        end
-    end
-    
-	return "good"
-
-    #TBC
-    
-end
-
-# ╔═╡ 212e7470-69ed-11eb-0c91-0d2fedbde742
-filter_bad_candidate(generate_rand_prog(50))
-
 # ╔═╡ 362ae372-69ed-11eb-365a-57ad5c95e68b
 function genetic(fitness,batch_size;max_prog_size=5000)
     
@@ -145,23 +164,17 @@ function genetic(fitness,batch_size;max_prog_size=5000)
         output[i] = brainfuck(batch[i])
     end
     
-    # filter out obvious bad candidates in batch
+    # filter out obvious bad candidates in batch, later ???
     #TBC
 end
-
-# ╔═╡ 3c5231f6-69ed-11eb-03d1-5d5deef6299d
-# genetic(fitness,10)
 
 # ╔═╡ Cell order:
 # ╠═ef15bb1a-69ec-11eb-007e-278ad9a4541b
 # ╠═70446fba-69ed-11eb-1858-b5a60a6488cb
-# ╠═df708826-69fa-11eb-161b-553948a1ab53
+# ╟─df708826-69fa-11eb-161b-553948a1ab53
 # ╠═ff6e8d00-69ec-11eb-203f-09807144f920
+# ╠═2f99ffdc-69ed-11eb-2060-735b07678435
 # ╠═07d8fe0a-69ed-11eb-3da8-57cf8ae76fb6
 # ╠═0e424b20-69ed-11eb-236b-d1dbb4829a75
 # ╠═18cd01fa-69ed-11eb-2b2b-39f63fb52165
-# ╠═1fd460d0-69ed-11eb-162b-f3f2b0d8919c
-# ╠═2f99ffdc-69ed-11eb-2060-735b07678435
-# ╠═212e7470-69ed-11eb-0c91-0d2fedbde742
-# ╠═362ae372-69ed-11eb-365a-57ad5c95e68b
-# ╠═3c5231f6-69ed-11eb-03d1-5d5deef6299d
+# ╟─362ae372-69ed-11eb-365a-57ad5c95e68b
