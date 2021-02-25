@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.20
+# v0.12.21
 
 using Markdown
 using InteractiveUtils
@@ -7,7 +7,96 @@ using InteractiveUtils
 # ╔═╡ d58647ee-7740-11eb-2281-cf75aefc8acc
 using Match
 
+# ╔═╡ 38bcbb86-7773-11eb-3d04-53fc9ecf45c6
+using Random
+
+# ╔═╡ ccc45988-7755-11eb-164b-559cc5c48157
+begin
+	using TickTock
+	
+	function myGA(popSize,generator,fitness,crossover,selection,mutation,options)
+		tick()
+		
+		pop = [generator(options.maxProgSize) for i in 1:popSize]
+		
+		stop = false
+		
+		gen = 0
+		
+		while(!stop)
+			gen += 1
+			
+			newPop = shuffle(pop)
+			
+			#crossover
+			
+			for i in 1:2:popSize
+				if rand() <= options.crossoverRate
+					p1 = newPop[i]
+					if popSize % 2 == 0
+						p2 = newPop[i+1]
+					else
+						p2 = newPop[i-1]
+					end
+	
+					c1,c2 = crossover(p1,p2)
+	
+					append!(newPop,[c1,c2])
+				end
+			end
+			
+			#mutation
+			
+			for i in 1:length(newPop)
+				
+				if rand() <= options.mutationRate
+					append!(newPop,[mutation(newPop[i])])
+				end
+			end
+	
+			
+			#fitness
+			
+			fitPop = Array{Int64}(undef,length(newPop))
+			
+			Threads.@threads for i in 1:length(newPop)
+				fitPop[i] = fitness(newPop[i])
+			end
+			
+			#data
+			
+			bestFit = minimum(fitPop)
+			bestInd = newPop[findfirst(fitPop.==bestFit)]
+			elapsedTime = peektimer()
+			
+			if gen % options.showEvery == 0
+				@show bestFit,bestInd,elapsedTime,gen
+			end
+			
+			#selection
+			
+			indexToKeep = selection(fitPop,popSize)
+			indexToDelete = [x for x ∈ 1:length(newPop) if x ∉ indexToKeep]
+			
+			deleteat!(newPop,indexToDelete)
+			pop = newPop
+			
+			#stop criterion
+			
+			if gen > options.maxGen
+				stop = true
+			elseif bestFit == options.targetFit
+				stop = true
+				@show "Il l'a fait ! Avec un vent légèrement défavorable ! IL L'A FAIT !!!"
+			end
+		end
+		return bestFit,bestInd,elapsedTime,gen
+	end
+end
+
 # ╔═╡ cfb0161a-7740-11eb-2fb6-79da5b2f1fe3
+#function needed in the interpreter to find the matching ']' of a '['
+
 function find_matching_bracket(str)
 	counter_open = 1
 	counter_close = 0
@@ -65,7 +154,7 @@ function brainfuck(prog, memsize = 500, ticks_lim = 5000)
             ',' => (memory[ptr] = read(STDIN, Char)) # To be adapted
             '[' => (if memory[ptr] == 0
 						if find_matching_bracket(code[instr+1:end]) != nothing
-							instr = find_matching_bracket(code[instr+1:end])
+							instr += find_matching_bracket(code[instr+1:end])
 						end
                 	else
                    		push!(stack, instr)
@@ -99,7 +188,7 @@ end
 # random individuals generation
 
 begin
-	function filter_bad_candidate(prog)
+	function filter_bad_candidate(prog) # this function asserts brackets matching
     
     for i in 1:length(collect(prog))
         if length(findall(collect(prog[1:i]) .== ']')) > length(findall(collect(prog[1:i]) .== '['))
@@ -167,7 +256,7 @@ function fitness_hw(prog)
     if length(prog_out)<length(expect_out)
         pad_prog_out = append!(prog_out,zeros(Int64,length(expect_out)-length(prog_out)))
         pad_expect_out = expect_out
-    elseif length(prog_out)>length(expect_out)
+    elseif length(prog_out)>length(expect_out) #if the output is too long, we can simply cut the program
         pad_expect_out = expect_out
         pad_prog_out = prog_out[1:length(expect_out)]
     else
@@ -187,14 +276,73 @@ function fitness_hw(prog)
     
 end
 
-# ╔═╡ d99c1f6e-773f-11eb-29a6-bb8545a6e04f
-begin
-	popSize = 100
-	pop = [generate_rand_prog(200) for i in 1:popSize]
+# ╔═╡ 1d915e2a-775d-11eb-07f7-359794472cfa
+#crossover function as implemented by Kory Becker in her AI-programmer
+# program is cut in 2 at random location, other half is taken at random
+
+function CX_KB(p1,p2)
+	marker1 = rand(1:length(p1))
 	
-	fitness = fitness_hw.(pop)
+	c1 = p1[1:marker1]*join(rand(['>','<','+','-','.','[',']'],length(p1[marker1+1:end])))
+	c2 = join(rand(['>','<','+','-','.','[',']'],length(p1[1:marker1])))*p1[marker1+1:end]
 	
+	return c1,c2
 end
+
+# ╔═╡ 5d15d69a-775d-11eb-0ef5-33a11d94ae5d
+# mutation function as implemented by Kory Becker in her AI-programmer
+# 4 equiprobable mutations : delete, insert, modify or shift
+
+function mut_KB(str)
+	str_mut = collect(str)
+	r = rand()
+	
+	if r<=0.25 && length(str_mut) > 1 #delete
+		i = rand(1:length(str_mut))
+		deleteat!(str_mut,i)
+	elseif r<=0.5 #insert
+		i = rand(1:length(str_mut)+1)
+		insert!(str_mut,i,rand(['>','<','+','-','.','[',']']))
+	elseif r<=0.75 #modify
+		i = rand(1:length(str))
+		str_mut[i] = rand(['>','<','+','-','.','[',']'])
+	else #shift
+		if rand()<0.5
+			str_mut = circshift(str_mut,1)
+		else
+			str_mut = circshift(str_mut,-1)
+		end
+	end
+	
+	return join(str_mut)
+end
+
+# ╔═╡ 2e483ae6-775e-11eb-1ab6-75e8643b488e
+# trivial selection, take best individuals
+
+function mySelection(fitPop,popSize)
+	indexSorted = sortperm(fitPop)
+	toKeep = indexSorted[1:popSize]
+	
+	return toKeep
+end
+
+# ╔═╡ 752264fe-775f-11eb-37bd-a3891c6f7b92
+mutable struct GAOptions
+	maxProgSize::Int64
+	crossoverRate::Float64
+	mutationRate::Float64
+	elitism::Float64
+	showEvery::Int64
+	targetFit::Int64
+	maxGen::Int64
+end
+
+# ╔═╡ ae05c122-776d-11eb-064d-4796f6c58f3b
+myOptions=GAOptions(200,0.8,0.05,0.0,50,0,100000)
+
+# ╔═╡ 0bf7c2c6-775d-11eb-3ee3-c5bc6abdc3e5
+bestFit1,bestInd1,elapsedTime1,gen1 = myGA(100,generate_rand_prog,fitness_hw,CX_KB,mySelection,mut_KB,myOptions)
 
 # ╔═╡ Cell order:
 # ╠═d58647ee-7740-11eb-2281-cf75aefc8acc
@@ -203,4 +351,11 @@ end
 # ╠═0ebe025e-7741-11eb-3f59-bf14da3bcfc6
 # ╠═9624d198-773f-11eb-1869-611413d65d6d
 # ╠═c667064e-7741-11eb-369b-693e7fc105f8
-# ╠═d99c1f6e-773f-11eb-29a6-bb8545a6e04f
+# ╠═1d915e2a-775d-11eb-07f7-359794472cfa
+# ╠═5d15d69a-775d-11eb-0ef5-33a11d94ae5d
+# ╠═2e483ae6-775e-11eb-1ab6-75e8643b488e
+# ╠═38bcbb86-7773-11eb-3d04-53fc9ecf45c6
+# ╠═ccc45988-7755-11eb-164b-559cc5c48157
+# ╠═752264fe-775f-11eb-37bd-a3891c6f7b92
+# ╠═ae05c122-776d-11eb-064d-4796f6c58f3b
+# ╠═0bf7c2c6-775d-11eb-3ee3-c5bc6abdc3e5
