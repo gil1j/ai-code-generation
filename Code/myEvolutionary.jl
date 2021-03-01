@@ -60,7 +60,7 @@ begin
 			fitPop = Array{Int64}(undef,length(newPop))
 			
 			Threads.@threads for i in 1:length(newPop)
-				fitPop[i] = fitness(newPop[i])
+				fitPop[i] = fitness(newPop[i],options.progTicksLim)
 			end
 			
 			#data
@@ -85,12 +85,14 @@ begin
 			
 			if gen > options.maxGen
 				stop = true
+				@show "Not good enough ..."
+				return bestFit,bestInd,elapsedTime,gen
 			elseif bestFit == options.targetFit
 				stop = true
 				@show "Il l'a fait ! Avec un vent légèrement défavorable ! IL L'A FAIT !!!"
+				return bestFit,bestInd,elapsedTime,gen
 			end
 		end
-		return bestFit,bestInd,elapsedTime,gen
 	end
 end
 
@@ -116,7 +118,7 @@ end
 # ╔═╡ ba4e219a-7740-11eb-3420-bba8151ff8c6
 # Interpreter, using a @match macro
 
-function brainfuck(prog, memsize = 500, ticks_lim = 5000)
+function brainfuck(prog, memsize = 500, ticks_lim = 10000)
 
 	#str = join(prog)
 	#str = join(Char.(prog))
@@ -233,11 +235,11 @@ end
 # ╔═╡ c667064e-7741-11eb-369b-693e7fc105f8
 # fitness calculation, best fitness is 0
 
-function fitness_hw(prog)
+function fitness_hw(prog,ticks_lim)
 	
-    #expect_out = [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33, 10] 
-	expect_out = [72,87] # let's start with something more simple perhapse...
-	prog_out,ticks_out = brainfuck(prog)
+    expect_out = [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33, 10] # let's go for the real stuff now !
+	#expect_out = [72,87] # let's start with something more simple perhapse...
+	prog_out,ticks_out = brainfuck(prog,ticks_lim)
 	
 	diff = 0
 	
@@ -251,6 +253,9 @@ function fitness_hw(prog)
 	end
 	if filter_bad_candidate(prog) == "bad"
 		diff += 100
+	end
+	if ticks_out == ticks_lim
+		diff += 50
 	end
 	
     if length(prog_out)<length(expect_out)
@@ -332,29 +337,32 @@ mutable struct GAOptions
 	maxProgSize::Int64
 	crossoverRate::Float64
 	mutationRate::Float64
-	elitism::Float64
 	showEvery::Int64
 	targetFit::Int64
 	maxGen::Int64
+	progTicksLim::Int64
 end
 
 # ╔═╡ ae05c122-776d-11eb-064d-4796f6c58f3b
-myOptions=GAOptions(200,0.8,0.05,0.0,50,0,100000)
+myOptions=GAOptions(500,0.8,0.05,50,0,10000000,10000)
 
 # ╔═╡ 0bf7c2c6-775d-11eb-3ee3-c5bc6abdc3e5
-bestFit1,bestInd1,elapsedTime1,gen1 = myGA(100,generate_rand_prog,fitness_hw,CX_KB,mySelection,mut_KB,myOptions)
+begin
+	bestFit1,bestInd1,elapsedTime1,gen1 = myGA(100,generate_rand_prog,fitness_hw,CX_KB,mySelection,mut_KB,myOptions)
+	@show bestFit1,bestInd1,elapsedTime1,gen1
+end
 
 # ╔═╡ Cell order:
-# ╠═d58647ee-7740-11eb-2281-cf75aefc8acc
-# ╠═cfb0161a-7740-11eb-2fb6-79da5b2f1fe3
+# ╟─d58647ee-7740-11eb-2281-cf75aefc8acc
+# ╟─cfb0161a-7740-11eb-2fb6-79da5b2f1fe3
 # ╠═ba4e219a-7740-11eb-3420-bba8151ff8c6
-# ╠═0ebe025e-7741-11eb-3f59-bf14da3bcfc6
+# ╟─0ebe025e-7741-11eb-3f59-bf14da3bcfc6
 # ╠═9624d198-773f-11eb-1869-611413d65d6d
 # ╠═c667064e-7741-11eb-369b-693e7fc105f8
 # ╠═1d915e2a-775d-11eb-07f7-359794472cfa
 # ╠═5d15d69a-775d-11eb-0ef5-33a11d94ae5d
 # ╠═2e483ae6-775e-11eb-1ab6-75e8643b488e
-# ╠═38bcbb86-7773-11eb-3d04-53fc9ecf45c6
+# ╟─38bcbb86-7773-11eb-3d04-53fc9ecf45c6
 # ╠═ccc45988-7755-11eb-164b-559cc5c48157
 # ╠═752264fe-775f-11eb-37bd-a3891c6f7b92
 # ╠═ae05c122-776d-11eb-064d-4796f6c58f3b
