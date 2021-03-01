@@ -348,7 +348,7 @@ begin
 				for i in 1:length(pop)
 					fitPop[i] = pop[i].fitness
 				end
-
+			
 				indexToKeep = selection(fitPop,Int(round(options.popSize*options.elitism)))
 				indexToDelete = [x for x ∈ 1:length(pop) if x ∉ indexToKeep]
 				
@@ -388,7 +388,7 @@ mutable struct GAOptions
 end
 
 # ╔═╡ ae05c122-776d-11eb-064d-4796f6c58f3b
-myOptions=GAOptions(100,500,0.8,0.05,50,0,10000000,10000,0.1,10000)
+myOptions=GAOptions(200,500,0.8,0.05,50,0,10000000,10000,0.1,400)
 
 # ╔═╡ 0bf7c2c6-775d-11eb-3ee3-c5bc6abdc3e5
 begin
