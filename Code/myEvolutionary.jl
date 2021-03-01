@@ -10,92 +10,6 @@ using Match
 # ╔═╡ 38bcbb86-7773-11eb-3d04-53fc9ecf45c6
 using Random
 
-# ╔═╡ ccc45988-7755-11eb-164b-559cc5c48157
-begin
-	using TickTock
-	
-	function myGA(popSize,generator,fitness,crossover,selection,mutation,options)
-		tick()
-		
-		pop = [generator(options.maxProgSize) for i in 1:popSize]
-		
-		stop = false
-		
-		gen = 0
-		
-		while(!stop)
-			gen += 1
-			
-			newPop = shuffle(pop)
-			
-			#crossover
-			
-			for i in 1:2:popSize
-				if rand() <= options.crossoverRate
-					p1 = newPop[i]
-					if popSize % 2 == 0
-						p2 = newPop[i+1]
-					else
-						p2 = newPop[i-1]
-					end
-	
-					c1,c2 = crossover(p1,p2)
-	
-					append!(newPop,[c1,c2])
-				end
-			end
-			
-			#mutation
-			
-			for i in 1:length(newPop)
-				
-				if rand() <= options.mutationRate
-					append!(newPop,[mutation(newPop[i])])
-				end
-			end
-	
-			
-			#fitness
-			
-			fitPop = Array{Int64}(undef,length(newPop))
-			
-			Threads.@threads for i in 1:length(newPop)
-				fitPop[i] = fitness(newPop[i],options.progTicksLim)
-			end
-			
-			#data
-			
-			bestFit = minimum(fitPop)
-			bestInd = newPop[findfirst(fitPop.==bestFit)]
-			elapsedTime = peektimer()
-			
-			if gen % options.showEvery == 0
-				@show bestFit,bestInd,elapsedTime,gen
-			end
-			
-			#selection
-			
-			indexToKeep = selection(fitPop,popSize)
-			indexToDelete = [x for x ∈ 1:length(newPop) if x ∉ indexToKeep]
-			
-			deleteat!(newPop,indexToDelete)
-			pop = newPop
-			
-			#stop criterion
-			
-			if gen > options.maxGen
-				stop = true
-				@show "Not good enough ..."
-				return bestFit,bestInd,elapsedTime,gen
-			elseif bestFit == options.targetFit
-				stop = true
-				@show "Il l'a fait ! Avec un vent légèrement défavorable ! IL L'A FAIT !!!"
-				return bestFit,bestInd,elapsedTime,gen
-			end
-		end
-	end
-end
-
 # ╔═╡ cfb0161a-7740-11eb-2fb6-79da5b2f1fe3
 #function needed in the interpreter to find the matching ']' of a '['
 
@@ -332,8 +246,136 @@ function mySelection(fitPop,popSize)
 	return toKeep
 end
 
+# ╔═╡ 6af8e4ae-7a60-11eb-3238-8d40e5ac2379
+mutable struct BFProg
+	program
+	fitness::Int64
+	
+	function BFProg(maxProgSize::Int64)
+		return new(generate_rand_prog(maxProgSize),10^10)
+	end
+	
+	function BFProg(program,fitness::Int64)
+		return new(program,fitness)
+	end
+end
+
+# ╔═╡ ccc45988-7755-11eb-164b-559cc5c48157
+begin
+	using TickTock
+	
+	function myGA(generator,fitness,crossover,selection,mutation,options)
+		tick()
+		
+		pop = [generator(options.maxProgSize) for i in 1:options.popSize]
+		
+		stop = false
+		
+		gen = 0
+		
+		while(!stop)
+			gen += 1
+			
+			newPop = shuffle(pop)
+			
+			#crossover
+			
+			for i in 1:2:options.popSize
+				if rand() <= options.crossoverRate
+					p1 = newPop[i]
+					if options.popSize % 2 == 0
+						p2 = newPop[i+1]
+					else
+						p2 = newPop[i-1]
+					end
+	
+					c1_prog,c2_prog = crossover(p1.program,p2.program)
+					c1 = BFProg(c1_prog,10^10)
+					c2 = BFProg(c2_prog,10^10)
+	
+					append!(newPop,[c1,c2])
+				end
+			end
+			
+			#mutation
+			
+			for i in 1:length(newPop)
+				
+				if rand() <= options.mutationRate
+					mut_prog = mutation(newPop[i].program)
+					mut = BFProg(mut_prog,10^10)
+					
+					append!(newPop,[mut])
+				end
+			end
+	
+			
+			#fitness
+			
+			Threads.@threads for i in 1:length(newPop)
+				if newPop[i].fitness == 10^10
+					newPop[i].fitness = fitness(newPop[i].program,options.progTicksLim)
+				end
+			end
+			
+			fitPop = Array{Int64,1}(undef,length(newPop))
+			
+			for i in 1:length(newPop)
+				fitPop[i] = newPop[i].fitness
+			end
+			
+			#data
+			
+			bestFit = minimum(fitPop)
+			bestInd = newPop[findfirst(fitPop.==bestFit)].program
+			elapsedTime = peektimer()
+			
+			if gen % options.showEvery == 0
+				@show bestFit,bestInd,elapsedTime,gen
+			end
+			
+			#selection
+			
+			indexToKeep = selection(fitPop,options.popSize)
+			indexToDelete = [x for x ∈ 1:length(newPop) if x ∉ indexToKeep]
+			
+			deleteat!(newPop,indexToDelete)
+			pop = newPop
+			
+			# reinject genetic variety after some time
+			
+			if gen % options.genVariety == 0
+				for i in 1:length(pop)
+					fitPop[i] = pop[i].fitness
+				end
+
+				indexToKeep = selection(fitPop,Int(round(options.popSize*options.elitism)))
+				indexToDelete = [x for x ∈ 1:length(pop) if x ∉ indexToKeep]
+				
+				deleteat!(pop,indexToDelete)
+				
+				
+				append!(pop,[generator(options.maxProgSize) for i in length(pop)+1:options.popSize])
+			end
+			
+			#stop criterion
+			
+			if gen > options.maxGen
+				stop = true
+				@show "Not good enough ..."
+				return bestFit,bestInd,elapsedTime,gen
+			elseif bestFit == options.targetFit
+				stop = true
+				@show "Il l'a fait ! Avec un vent légèrement défavorable ! IL L'A FAIT !!!"
+				return bestFit,bestInd,elapsedTime,gen
+			end
+		end
+	end
+end
+
 # ╔═╡ 752264fe-775f-11eb-37bd-a3891c6f7b92
 mutable struct GAOptions
+	popSize::Int64
 	maxProgSize::Int64
 	crossoverRate::Float64
 	mutationRate::Float64
@@ -341,14 +383,16 @@ mutable struct GAOptions
 	targetFit::Int64
 	maxGen::Int64
 	progTicksLim::Int64
+	elitism::Float64
+	genVariety::Int64
 end
 
 # ╔═╡ ae05c122-776d-11eb-064d-4796f6c58f3b
-myOptions=GAOptions(500,0.8,0.05,50,0,10000000,10000)
+myOptions=GAOptions(100,500,0.8,0.05,50,0,10000000,10000,0.1,10000)
 
 # ╔═╡ 0bf7c2c6-775d-11eb-3ee3-c5bc6abdc3e5
 begin
-	bestFit1,bestInd1,elapsedTime1,gen1 = myGA(100,generate_rand_prog,fitness_hw,CX_KB,mySelection,mut_KB,myOptions)
+	bestFit1,bestInd1,elapsedTime1,gen1 = myGA(BFProg,fitness_hw,CX_KB,mySelection,mut_KB,myOptions)
 	@show bestFit1,bestInd1,elapsedTime1,gen1
 end
 
@@ -363,6 +407,7 @@ end
 # ╠═5d15d69a-775d-11eb-0ef5-33a11d94ae5d
 # ╠═2e483ae6-775e-11eb-1ab6-75e8643b488e
 # ╟─38bcbb86-7773-11eb-3d04-53fc9ecf45c6
+# ╠═6af8e4ae-7a60-11eb-3238-8d40e5ac2379
 # ╠═ccc45988-7755-11eb-164b-559cc5c48157
 # ╠═752264fe-775f-11eb-37bd-a3891c6f7b92
 # ╠═ae05c122-776d-11eb-064d-4796f6c58f3b
