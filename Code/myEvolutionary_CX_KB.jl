@@ -415,13 +415,13 @@ myOptions=GAOptions(200,500,0.8,0.05,50,0,10000000,10000,0.1,400)
 
 # ╔═╡ a3d911f2-7cd0-11eb-3c48-55422fe25c8f
 begin
-	@show "RUN 04/03/2021, solved genetic variety issue, using concatenation at random location as crossover"
+	@show "RUN 04/03/2021, solved genetic variety issue, using split at random location and fill with random as crossover"
 	@show myOptions
 end
 
 # ╔═╡ 0bf7c2c6-775d-11eb-3ee3-c5bc6abdc3e5
 begin
-	bestFit1,bestInd1,elapsedTime1,gen1 = myGA(BFProg,fitness_hw,CX,mySelection,mut_KB,myOptions)
+	bestFit1,bestInd1,elapsedTime1,gen1 = myGA(BFProg,fitness_hw,CX_KB,mySelection,mut_KB,myOptions)
 	@show bestFit1,bestInd1,elapsedTime1,gen1
 end
 
