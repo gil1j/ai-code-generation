@@ -14,7 +14,7 @@ begin
 	"roulette selection, probability of an individual being selected is proportional to its fitness. note : roulette selection kills strict elitism"
 	function roulette(fitPop, N)
 		fitPopRel = abs.(fitPop.-maximum(fitPop))
-		fitPopRel = fitPopRel .+ 0.001
+		fitPopRel = fitPopRel .+ 0.001 # sample does not support 0 values
 		prob = Weights(fitPopRel./sum(fitPopRel))
 		selectionFit = sample(fitPopRel,prob,N,replace=false)
 
@@ -35,16 +35,15 @@ md"# Print \"hello\"
 # ╔═╡ a1896204-82a9-11eb-1827-27d63a1a7c3b
 "fitness calculation, best fitness is 0"
 function fitnessStr(prog,ticksLim)
-
-	#expect_out = [72, 101, 108, 108, 111]
-    expect_out = [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33, 10] # Hello World!
-	#expect_out = [72,87] # HW
+	#expect_out = [72, 101, 108, 108, 111] # Hello
+    #expect_out = [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33, 10] # Hello World!
+	expect_out = [72,87] # HW
 	prog_out,ticks_out = brainfuck(prog;ticks_lim=ticksLim)
 	
 	diff = 0
 	
 	#penalties
-	
+	##=
 	if length(prog_out) == 0
 		diff += 50
 	end
@@ -57,7 +56,7 @@ function fitnessStr(prog,ticksLim)
 	if ticks_out == ticksLim
 		diff += 50
 	end
-	
+	##=#
     if length(prog_out)<length(expect_out)
         pad_prog_out = append!(prog_out,zeros(Int64,length(expect_out)-length(prog_out)))
         pad_expect_out = expect_out
@@ -74,10 +73,11 @@ function fitnessStr(prog,ticksLim)
         diff += abs(pad_prog_out[i]-pad_expect_out[i])
 		
 		#penalty for different char
-		
+		##=
 		if pad_prog_out[i] != pad_expect_out[i]
 			diff += 10
 		end
+		##=#
     end
     
 	
@@ -106,7 +106,7 @@ function mut(str)
 	str_mut = collect(str)
 	r = rand()
 
-	if r<=0.25 && length(str_mut) > 1 #delete
+	if r<=0.25 && length(str_mut) > 2 #delete
 		i = rand(1:length(str_mut))
 		deleteat!(str_mut,i)
 	elseif r<=0.5 #insert
@@ -127,12 +127,12 @@ function mut(str)
 end
 
 # ╔═╡ 3a9db8f0-82aa-11eb-2f69-3141fad6e346
-myOptions=GAOptions(popSize=100,maxProgSize=5000,crossoverRate=0.8,mutationRate=0.05,showEvery=50,targetFit=0,maxGen=10000000,progTicksLim=5000,elitism=0.1)
+myOptions=GAOptions(popSize=100,maxProgSize=200,crossoverRate=0.8,mutationRate=0.05,showEvery=100,targetFit=0,maxGen=10000000,progTicksLim=5000,elitism=0.1)
 
 # ╔═╡ 44691fa0-82aa-11eb-27a2-fdc13a60b4f7
 begin
 	@show Dates.now()
-	@show "print hello world with roulette and adapted options"
+	@show "print hello world with roulette selection and adapted options"
 	@show myOptions
 end
 
