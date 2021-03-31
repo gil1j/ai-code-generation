@@ -1,0 +1,4 @@
+[deps]
+Brainfuck = "64099ad2-a977-4c1b-9c56-80e7bbfe392e"
+GAFramework = "0b10d19a-53ea-4f7c-be35-fc0c086cac57"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
