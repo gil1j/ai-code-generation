@@ -276,8 +276,8 @@ end
 
 function fitness_hw(prog,ticks_lim)
 	
-    expect_out = [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33, 10] # let's go for the real stuff now !
-	#expect_out = [72,87] # let's start with something more simple perhapse...
+    	#expect_out = [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33, 10] # let's go for the real stuff now !
+	expect_out = [104,105] # let's start with something more simple perhapse...
 	prog_out,ticks_out = brainfuck(prog,ticks_lim)
 	
 	diff = 0
@@ -411,7 +411,7 @@ mutable struct GAOptions
 end
 
 # ╔═╡ ae05c122-776d-11eb-064d-4796f6c58f3b
-myOptions=GAOptions(200,500,0.8,0.05,50,0,10000000,10000,0.1,400)
+myOptions=GAOptions(100,150,0.8,0.05,100,0,10000000,10000,0.1,400)
 
 # ╔═╡ a3d911f2-7cd0-11eb-3c48-55422fe25c8f
 begin

@@ -396,22 +396,24 @@ mutable struct BFProg
 	end
 end
 
+# ╔═╡ e151339e-7ffc-11eb-280b-37a44a16d057
+import Base.@kwdef
+
 # ╔═╡ 752264fe-775f-11eb-37bd-a3891c6f7b92
-mutable struct GAOptions
-	popSize::Int64
-	maxProgSize::Int64
-	crossoverRate::Float64
-	mutationRate::Float64
-	showEvery::Int64
-	targetFit::Int64
-	maxGen::Int64
-	progTicksLim::Int64
-	elitism::Float64
-	genVariety::Int64
+@kwdef mutable struct GAOptions
+	popSize::Int64=100
+	maxProgSize::Int64=500
+	crossoverRate::Float64=0.8
+	mutationRate::Float64=0.1
+	showEvery::Int64=100
+	targetFit::Int64=0
+	maxGen::Int64=1000000
+	progTicksLim::Int64=5000
+	elitism::Float64=0.1
 end
 
 # ╔═╡ ae05c122-776d-11eb-064d-4796f6c58f3b
-myOptions=GAOptions(200,500,0.8,0.05,50,0,10000000,10000,0.1,400)
+myOptions=GAOptions(popSize=200,maxProgSize=500,crossoverRate=0.8,mutationRate=0.05,showEvery=50,targetFit=0,maxGen=10000000,progTicksLim=10000,elitism=0.1)
 
 # ╔═╡ a3d911f2-7cd0-11eb-3c48-55422fe25c8f
 begin
@@ -428,18 +430,19 @@ end
 # ╔═╡ Cell order:
 # ╟─d58647ee-7740-11eb-2281-cf75aefc8acc
 # ╟─cfb0161a-7740-11eb-2fb6-79da5b2f1fe3
-# ╠═ba4e219a-7740-11eb-3420-bba8151ff8c6
-# ╟─0ebe025e-7741-11eb-3f59-bf14da3bcfc6
-# ╠═9624d198-773f-11eb-1869-611413d65d6d
+# ╟─ba4e219a-7740-11eb-3420-bba8151ff8c6
+# ╠═0ebe025e-7741-11eb-3f59-bf14da3bcfc6
+# ╟─9624d198-773f-11eb-1869-611413d65d6d
 # ╠═c667064e-7741-11eb-369b-693e7fc105f8
 # ╠═1d915e2a-775d-11eb-07f7-359794472cfa
 # ╠═02f67570-7cd0-11eb-3c52-9d73da3a893b
 # ╠═5d15d69a-775d-11eb-0ef5-33a11d94ae5d
 # ╠═2e483ae6-775e-11eb-1ab6-75e8643b488e
 # ╟─38bcbb86-7773-11eb-3d04-53fc9ecf45c6
-# ╠═6af8e4ae-7a60-11eb-3238-8d40e5ac2379
-# ╠═ccc45988-7755-11eb-164b-559cc5c48157
-# ╠═752264fe-775f-11eb-37bd-a3891c6f7b92
+# ╟─6af8e4ae-7a60-11eb-3238-8d40e5ac2379
+# ╟─ccc45988-7755-11eb-164b-559cc5c48157
+# ╟─e151339e-7ffc-11eb-280b-37a44a16d057
+# ╟─752264fe-775f-11eb-37bd-a3891c6f7b92
 # ╠═ae05c122-776d-11eb-064d-4796f6c58f3b
 # ╠═a3d911f2-7cd0-11eb-3c48-55422fe25c8f
 # ╠═0bf7c2c6-775d-11eb-3ee3-c5bc6abdc3e5
